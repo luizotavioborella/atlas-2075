@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ATLAS 2075 — Governe o Mundo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="globe.gl.min.js"></script>
+<style>
+:root{--bg:#04060d;--panel:rgba(10,16,32,.72);--line:rgba(120,170,255,.18);--tx:#e8eefc;--mut:#8b9abb;--ac:#38e1ff;--ac2:#ffb547;--good:#4ef0a0;--bad:#ff5470;--r:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:Manrope,system-ui,sans-serif}
+button{font-family:inherit;cursor:pointer;border:0;color:inherit}
+#globe{position:fixed;inset:0}
+.glass{background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.mono{font-family:'JetBrains Mono',monospace}
+.disp{font-family:Unbounded,sans-serif}
+/* top bar */
+#top{position:fixed;top:14px;left:358px;display:flex;gap:6px;padding:8px;z-index:5}
+.stat{padding:6px 14px;border-radius:10px;text-align:center;min-width:92px}
+.stat b{display:block;font-family:'JetBrains Mono';font-size:18px}
+.stat span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+#yearBox b{font-family:Unbounded;font-size:22px;color:var(--ac)}
+.tbtn{padding:0 14px;border-radius:10px;background:rgba(56,225,255,.08);border:1px solid var(--line);font-weight:700;font-size:13px}
+.tbtn:hover{background:rgba(56,225,255,.2)}
+/* left panel */
+#left{position:fixed;left:14px;top:14px;bottom:14px;width:330px;padding:16px;z-index:4;display:flex;flex-direction:column;gap:10px;overflow:auto}
+#left::-webkit-scrollbar,#feed::-webkit-scrollbar{width:4px}#left::-webkit-scrollbar-thumb{background:var(--line)}
+.brand{font-family:Unbounded;font-weight:900;font-size:20px;letter-spacing:.02em}
+.brand i{font-style:normal;color:var(--ac)}
+.sub{font-size:11px;color:var(--mut);letter-spacing:.14em;text-transform:uppercase}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.tab{padding:7px 4px;border-radius:8px;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid transparent}
+.tab.on{border-color:var(--ac);background:rgba(56,225,255,.12);color:var(--ac)}
+.rname{font-family:Unbounded;font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:10.5px;padding:3px 8px;border-radius:99px;background:rgba(255,181,71,.13);color:var(--ac2);font-weight:700}
+.ind{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:12.5px;cursor:help;transition:background .3s}
+.ind:nth-child(odd){background:rgba(255,255,255,.025)}
+.ind .v{font-family:'JetBrains Mono';font-weight:700;font-size:13px}
+.ind .d{font-family:'JetBrains Mono';font-size:10.5px;min-width:46px;text-align:right}
+.ind.flash{background:rgba(56,225,255,.18)!important}
+.up{color:var(--good)}.dn{color:var(--bad)}
+.sec{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ac);margin-top:6px;font-weight:800}
+#pyr{width:100%;height:150px}
+/* map legend */
+#legend{position:fixed;left:360px;bottom:14px;padding:12px 14px;z-index:4;width:300px}
+#legend select{width:100%;background:#0b1426;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:7px;font-family:inherit;font-weight:700;margin:6px 0}
+.bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#1b3a8a,#38e1ff,#ffe066,#ff5470)}
+.lgl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:4px;font-family:'JetBrains Mono'}
+/* right side */
+#right{position:fixed;right:14px;top:100px;bottom:14px;width:390px;z-index:5;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+#right>*{pointer-events:auto}
+#feed{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px;mask-image:linear-gradient(to bottom,transparent,#000 40px)}
+.news{padding:10px 12px;font-size:12.5px;line-height:1.4;animation:slideIn .5s ease both;border-left:3px solid var(--ac)}
+.news.bad{border-left-color:var(--bad)}.news.good{border-left-color:var(--good)}
+.news small{display:block;color:var(--mut);font-family:'JetBrains Mono';font-size:10px;margin-bottom:2px}
+#card{position:relative;padding:18px;animation:pop .45s cubic-bezier(.2,1.4,.4,1) both;max-height:70vh;overflow:auto}
+@keyframes pop{from{opacity:0;transform:translateY(30px) scale(.94)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}}
+.chip{display:inline-flex;gap:6px;align-items:center;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:rgba(56,225,255,.12);color:var(--ac)}
+.chip.q{background:rgba(255,181,71,.15);color:var(--ac2)}
+.ctitle{font-family:Unbounded;font-size:19px;font-weight:700;margin:10px 0 6px;line-height:1.25}
+.cdesc{font-size:13.5px;line-height:1.5;color:#c6d1ea}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.opt{text-align:left;padding:11px 13px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center;transition:.2s}
+.opt:hover:not(:disabled){border-color:var(--ac);background:rgba(56,225,255,.1);transform:translateX(-4px)}
+.opt:disabled{opacity:.35;cursor:not-allowed}
+.opt .cost{font-family:'JetBrains Mono';font-size:12px;color:var(--ac2);white-space:nowrap}
+.opt.right{border-color:var(--good);background:rgba(78,240,160,.12)}.opt.wrong{border-color:var(--bad);background:rgba(255,84,112,.12)}
+.deltas{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:12px 0}
+.dl{font-size:11.5px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.04);display:flex;justify-content:space-between}
+.dl b{font-family:'JetBrains Mono'}
+.concept{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.25);font-size:12.5px;line-height:1.45}
+.concept b{color:var(--ac2)}
+.go{margin-top:14px;width:100%;padding:12px;border-radius:12px;background:linear-gradient(90deg,#38e1ff,#4ef0a0);color:#04121a;font-weight:800;font-size:14px;letter-spacing:.02em}
+.go:hover{filter:brightness(1.1)}
+.prog{display:flex;gap:4px;margin-top:12px}.prog i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.1)}.prog i.on{background:var(--ac)}
+/* overlay */
+.ov{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(4,6,13,.55),rgba(4,6,13,.95));padding:20px}
+.ovbox{max-width:760px;width:100%;padding:34px;max-height:92vh;overflow:auto}
+.hero{font-family:Unbounded;font-weight:900;font-size:clamp(40px,7vw,78px);line-height:.95;letter-spacing:-.02em}
+.hero i{font-style:normal;background:linear-gradient(90deg,#38e1ff,#4ef0a0);-webkit-background-clip:text;color:transparent}
+.ovbox p{color:#c6d1ea;line-height:1.6;margin-top:12px}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.rules div{padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:12.5px;line-height:1.45}
+.rules b{display:block;font-family:Unbounded;font-size:13px;margin-bottom:4px;color:var(--ac)}
+.gl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.gi{padding:10px;border-radius:10px;border:1px solid var(--line);font-size:12px;line-height:1.4;background:rgba(255,255,255,.03)}
+.gi.lock{opacity:.35;filter:blur(.3px)}
+.gi b{color:var(--ac);display:block;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
+td,th{padding:7px;border-bottom:1px solid var(--line);text-align:right}td:first-child,th:first-child{text-align:left}
+th{color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em}
+.grade{font-family:Unbounded;font-size:96px;font-weight:900;color:var(--ac);line-height:1}
+.hidden{display:none!important}
+#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:15;font-family:Unbounded;font-weight:900;font-size:clamp(28px,5vw,60px);text-align:center;pointer-events:none;text-shadow:0 0 40px rgba(56,225,255,.6);opacity:0}
+#toast.show{animation:tst 2.2s ease both}
+@keyframes tst{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}15%,75%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-60%)}}
+.glabel{font-family:'JetBrains Mono';font-size:11px;font-weight:700;color:#fff;background:rgba(4,8,20,.7);border:1px solid rgba(56,225,255,.4);padding:3px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;text-align:center;transform:translateY(-10px)}
+.glabel em{display:block;font-style:normal;color:var(--ac);font-size:9px;letter-spacing:.1em}
+@media(max-width:1100px){#left{width:280px}#legend{left:304px;width:240px}#right{width:330px}}
+@media(max-width:820px){#top{left:50%;transform:translateX(-50%)}
+ #left{top:auto;bottom:0;left:0;right:0;width:auto;height:34vh;border-radius:16px 16px 0 0}
+ #legend{display:none}#top{top:6px;flex-wrap:wrap;justify-content:center;width:96vw}.stat{min-width:70px;padding:4px 8px}.stat b{font-size:14px}
+ #right{top:auto;bottom:35vh;left:8px;right:8px;width:auto}#feed{display:none}#card{max-height:42vh}
+ .rules{grid-template-columns:1fr}.gl{grid-template-columns:1fr}}
+
+.coin{display:inline-block;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c2,#ffd23f 40%,#d99a00 75%,#8a5a00);box-shadow:0 0 0 1.5px #b07a00 inset,0 0 8px rgba(255,200,40,.5);vertical-align:-3px;position:relative}
+.coin::after{content:"$";position:absolute;inset:0;display:grid;place-items:center;font:800 10px Manrope;color:#8a5a00}
+#cofre{position:relative;display:flex;align-items:center;gap:10px;padding:4px 14px;border-radius:10px;background:linear-gradient(180deg,rgba(255,210,63,.16),rgba(255,210,63,.04));border:1px solid rgba(255,210,63,.4)}
+#cofre .stack{position:relative;width:34px;height:34px}
+#cofre .stack .coin{position:absolute;width:26px;height:26px;left:4px}
+#cofre .stack .coin::after{font-size:14px}
+#cofre b{font-family:'JetBrains Mono';font-size:22px;color:#ffd23f;display:block;line-height:1}
+#cofre span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+#cofre.bump{animation:bump .5s}@keyframes bump{40%{transform:scale(1.15)}}
+.fly{position:fixed;z-index:30;pointer-events:none;width:22px;height:22px;transition:transform .9s cubic-bezier(.5,-.3,.6,1),opacity .9s}
+.fnum{position:fixed;z-index:31;pointer-events:none;font:800 22px 'JetBrains Mono';animation:fnum 1.4s ease forwards}
+@keyframes fnum{to{transform:translateY(-50px);opacity:0}}
+.opt .cost{display:flex;gap:4px;align-items:center;color:#ffd23f;font-weight:800}
+.tut-up{z-index:25!important}.tut-hi{z-index:25!important;box-shadow:0 0 0 3px #ffd23f,0 0 0 9999px rgba(2,4,10,.78)!important;border-radius:var(--r);pointer-events:none}
+#tutBox{position:fixed;z-index:26;width:340px;padding:18px;border:1px solid #ffd23f}
+#tutBox .ctitle{font-size:17px}
+.dots{display:flex;gap:5px;margin-top:12px}.dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2)}.dots i.on{background:#ffd23f}
+.tbar{display:flex;gap:8px;margin-top:12px}.tbar button{flex:1;margin:0}
+.skip{background:rgba(255,255,255,.06);border-radius:12px;padding:12px;font-weight:700;font-size:13px}
+
+#vig{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(255,30,30,.55));opacity:0;transition:opacity 1.5s}
+#ash{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity 2s;background-image:radial-gradient(rgba(255,120,60,.8) 1px,transparent 1.5px);background-size:90px 90px;animation:ash 12s linear infinite}
+@keyframes ash{to{background-position:60px 900px}}
+#saude{padding:6px 12px;border-radius:10px;min-width:150px}
+#saude span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+#saude .hb{height:10px;border-radius:5px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+#saude .hb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff5470,#ffb547,#4ef0a0);background-size:150px 100%;transition:width 1s}
+#saude b{font-family:"JetBrains Mono";font-size:13px;margin-left:8px}
+.shake{animation:shake .5s}@keyframes shake{20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-1px)}}
+</style>
+</head>
+<body>
+<div id="globe"></div><div id="vig"></div><div id="ash"></div>
+
+<div id="top" class="glass">
+  <div class="stat" id="yearBox"><b id="tYear">2025</b><span>Ano</span></div>
+  <div class="stat"><b id="tPop">8,1 bi</b><span>População mundial</span></div>
+  <div id="cofre"><div class="stack"><i class="coin" style="top:10px"></i><i class="coin" style="top:5px"></i><i class="coin" style="top:0"></i></div><div><b id="tCap">100</b><span>Moedas</span></div></div>
+  <div id="saude"><span>Saúde do planeta</span><b id="tHp">100%</b><div class="hb"><i id="hpBar"></i></div></div>
+  <div class="stat"><b id="tApr">60%</b><span>Aprovação</span></div>
+  <button class="tbtn" id="bHelp" title="Tutorial">❓</button>
+  <button class="tbtn" id="bGloss">Glossário <span id="gCount" class="mono">0/25</span></button>
+</div>
+
+<aside id="left" class="glass">
+  <div><div class="brand">ATLAS<i>2075</i></div><div class="sub">Painel do Censo Demográfico</div></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="rname"><span id="rName">—</span><span class="mono" style="font-size:12px;color:var(--mut)" id="rArea"></span></div>
+  <div class="tags" id="rTags"></div>
+  <div id="inds"></div>
+  <div class="sec">Pirâmide etária</div>
+  <canvas id="pyr"></canvas>
+</aside>
+
+<div id="legend" class="glass">
+  <div class="sub">O globo mostra</div>
+  <select id="layer"></select>
+  <div class="bar"></div>
+  <div class="lgl"><span id="lMin"></span><span id="lMax"></span></div>
+</div>
+
+<div id="right">
+  <div id="feed"></div>
+  <div id="card" class="glass"></div>
+</div>
+
+<div id="toast"></div>
+
+<div class="ov" id="intro">
+  <div class="ovbox glass">
+    <div class="sub">Simulação demográfica · Censo</div>
+    <div class="hero">Você agora<br>governa o <i>mundo.</i></div>
+    <p>De 2025 a 2075, crises vão surgir em cada continente. Cada decisão muda a natalidade, a mortalidade, as migrações e a cidade e o campo — e o planeta reage na hora. Acompanhe os indicadores do Censo e tente chegar a 2075 com um mundo saudável.</p>
+    <div class="rules">
+      <div><b>Decida</b>Os dilemas chegam em cards. Cada escolha custa capital político.</div>
+      <div><b>Observe</b>O globo muda de cor, pulsa e mostra fluxos de migração a cada decisão.</div>
+      <div><b>Aprenda</b>Cada resultado explica o conceito do Censo. Desbloqueie os 25.</div>
+    </div>
+    <button class="tbtn" id="bTut" style="width:100%;padding:12px;margin-top:20px">Como jogar? Ver tutorial de novo a qualquer hora no botão ❓</button>
+    <button class="go" id="bStart" style="font-size:16px;padding:16px">Assumir o governo mundial →</button>
+  </div>
+</div>
+
+<div id="tutBox" class="glass hidden"></div>
+<div class="ov hidden" id="gloss"><div class="ovbox glass">
+  <div style="display:flex;justify-content:space-between;align-items:center"><div class="disp" style="font-size:22px;font-weight:700">Glossário do Censo</div><button class="tbtn" style="padding:8px 14px" onclick="gloss.classList.add('hidden')">Fechar</button></div>
+  <p style="margin-top:6px;font-size:13px">Conceitos aparecem conforme você os encontra no jogo.</p>
+  <div class="gl" id="glList"></div>
+</div></div>
+
+<div class="ov hidden" id="end"><div class="ovbox glass" id="endBox"></div></div>
+
+<script>
+// ---------- CONCEITOS ----------
+const C = [
+["Censo Demográfico","Pesquisa que coleta informações sobre a população e suas condições de vida."],
+["População absoluta","Número total de habitantes de um lugar."],
+["População relativa","Quantidade de habitantes por quilômetro quadrado."],
+["Densidade demográfica","Relação entre a população absoluta e a área territorial."],
+["Taxa de natalidade","Número de nascimentos em uma população durante determinado período."],
+["Taxa de mortalidade","Número de mortes em uma população durante determinado período."],
+["Crescimento vegetativo","Diferença entre a taxa de natalidade e a taxa de mortalidade."],
+["Crescimento populacional","Aumento ou diminuição do número de habitantes de uma região."],
+["Taxa de fecundidade","Número médio de filhos por mulher."],
+["Expectativa de vida","Média de anos que uma pessoa pode esperar viver."],
+["Transição demográfica","Processo de mudanças nas taxas de natalidade e mortalidade de uma população."],
+["Envelhecimento populacional","Aumento da proporção de idosos na população."],
+["Pirâmide etária","Gráfico que representa a distribuição da população por idade e sexo."],
+["PEA","População Economicamente Ativa: parcela da população que está trabalhando ou procurando emprego."],
+["Urbanização","Crescimento da população que vive nas cidades."],
+["Êxodo rural","Saída de pessoas do campo para a cidade."],
+["Imigração","Entrada de pessoas em um território."],
+["Emigração","Saída de pessoas de um território."],
+["Migração interna","Deslocamento de pessoas dentro do mesmo país."],
+["Migração externa","Deslocamento de pessoas entre países."],
+["Saldo migratório","Diferença entre o número de imigrantes e emigrantes de um território."],
+["População urbana","Pessoas que vivem em áreas urbanas."],
+["População rural","Pessoas que vivem em áreas rurais."],
+["Mortalidade infantil","Mortes de crianças menores de um ano para cada mil nascidos vivos."],
+["Razão de dependência","Relação entre a população dependente (crianças e idosos) e a população em idade ativa."]];
+const unlocked = new Set([0]);
+
+// ---------- REGIÕES (valores iniciais aproximados, 2025) ----------
+const R = {
+ AF:{n:"África",lat:3,lng:20,c:"#ff9f43",pop:1500,area:30.3,nat:32,mor:8,fec:4.1,ev:64,mi:45,urb:45,jov:40,ido:3.5,mig:-.5,apr:60,eco:35},
+ AS:{n:"Ásia",lat:32,lng:92,c:"#ff5470",pop:4800,area:44.6,nat:15,mor:7.5,fec:1.9,ev:74,mi:22,urb:53,jov:23,ido:9.5,mig:-.3,apr:60,eco:55},
+ EU:{n:"Europa",lat:52,lng:18,c:"#38e1ff",pop:745,area:10.2,nat:9,mor:11,fec:1.4,ev:79,mi:3.5,urb:75,jov:15,ido:21,mig:1.8,apr:60,eco:75},
+ LA:{n:"América Latina",lat:-12,lng:-62,c:"#4ef0a0",pop:665,area:20.1,nat:14,mor:6.5,fec:1.8,ev:75,mi:14,urb:81,jov:23,ido:9.5,mig:-.8,apr:60,eco:50},
+ NA:{n:"América do Norte",lat:46,lng:-100,c:"#a78bfa",pop:380,area:21.8,nat:11,mor:8.5,fec:1.6,ev:79,mi:5.5,urb:83,jov:18,ido:17.5,mig:3.5,apr:60,eco:80},
+ OC:{n:"Oceania",lat:-24,lng:134,c:"#ffe066",pop:46,area:8.5,nat:15,mor:7,fec:2.1,ev:79,mi:15,urb:68,jov:23,ido:13,mig:4,apr:60,eco:65}};
+const KEYS = Object.keys(R);
+function regionOf(p){const c=p.CONTINENT,s=p.SUBREGION;
+ if(c==="Africa")return"AF";if(c==="Asia")return"AS";if(c==="Europe")return p.ADMIN==="Russia"?"EU":"EU";
+ if(c==="South America")return"LA";if(c==="North America")return(s==="Northern America")?"NA":"LA";
+ if(c==="Oceania")return"OC";return null;}
+
+// ---------- INDICADORES ----------
+const der = r=>({ dens:r.pop/r.area, veg:r.nat-r.mor, cres:r.nat-r.mor+r.mig, pea:(100-r.jov-r.ido)*.68, dep:(r.jov+r.ido)/(100-r.jov-r.ido)*100, rur:100-r.urb });
+const IND = [
+ ["pop","População absoluta",1,v=>fmtPop(v),"mi"],
+ ["dens","População relativa",2,v=>v.toFixed(1)+" hab/km²"],
+ ["nat","Taxa de natalidade",4,v=>v.toFixed(1)+"‰"],
+ ["mor","Taxa de mortalidade",5,v=>v.toFixed(1)+"‰"],
+ ["veg","Crescimento vegetativo",6,v=>(v>0?"+":"")+v.toFixed(1)+"‰"],
+ ["mig","Saldo migratório",20,v=>(v>0?"+":"")+v.toFixed(1)+"‰"],
+ ["cres","Crescimento populacional",7,v=>(v>0?"+":"")+v.toFixed(1)+"‰/ano"],
+ ["fec","Taxa de fecundidade",8,v=>v.toFixed(2)+" filhos"],
+ ["ev","Expectativa de vida",9,v=>v.toFixed(1)+" anos"],
+ ["mi","Mortalidade infantil",23,v=>v.toFixed(1)+"‰"],
+ ["urb","População urbana",21,v=>v.toFixed(0)+"%"],
+ ["rur","População rural",22,v=>v.toFixed(0)+"%"],
+ ["jov","Jovens (0–14)",12,v=>v.toFixed(1)+"%"],
+ ["ido","Idosos (65+)",11,v=>v.toFixed(1)+"%"],
+ ["pea","PEA",13,v=>v.toFixed(1)+"%"],
+ ["dep","Razão de dependência",24,v=>v.toFixed(0)+"%"]];
+const val=(r,k)=> k in r ? r[k] : der(r)[k];
+const LAYERS = [["dens","Densidade demográfica",3],["fec","Taxa de fecundidade",8],["ev","Expectativa de vida",9],["mi","Mortalidade infantil",23],["urb","Urbanização",14],["ido","Envelhecimento (idosos %)",11],["cres","Crescimento populacional",7],["mig","Saldo migratório",20],["dep","Razão de dependência",24],["apr","Aprovação do governo",-1]];
+function fmtPop(v){return v>=1000?(v/1000).toFixed(2).replace(".",",")+" bi":v.toFixed(v<100?1:0).replace(".",",")+" mi"}
+
+// ---------- DECISÕES ----------
+// e: efeitos na região; x: efeitos em outras regiões; fx: efeito visual no globo; later: consequência atrasada
+const D = [
+{id:"filho",r:["AS","AF"],c:r=>r.fec>2.2||r.pop>3000,t:"Superpopulação nas metrópoles",d:r=>`As cidades de ${r.n} estão superlotadas. Hospitais e escolas não dão conta. O conselho exige uma resposta sobre o ritmo de nascimentos.`,
+ o:[{l:"Lei do filho único",k:30,e:{fec:-.9,nat:-7,apr:-15},later:{in:3,e:{ido:4,jov:-6},msg:"A geração do filho único envelheceu: faltam jovens e sobram idosos."},m:"A natalidade despenca na hora. Mas daqui a uns 15 anos a pirâmide etária vai ficar com a base estreita — menos jovens para sustentar os idosos.",cs:[8,4,10,24],fx:"bad"},
+    {l:"Educação feminina e planejamento familiar",k:25,e:{fec:-.45,nat:-3.5,mi:-6,eco:6,apr:5},m:"Mulheres que estudam mais tendem a ter menos filhos e mais tarde. É o caminho mais comum da transição demográfica.",cs:[8,10,4],fx:"good"},
+    {l:"Não interferir",k:0,e:{urb:3,apr:-6,mor:.6},m:"Sem planejamento, a cidade incha: mais gente por km² e serviços piores. A mortalidade sobe um pouco.",cs:[3,14,5],fx:"bad"}]},
+{id:"vacina",r:["AF","AS","LA"],c:r=>r.mi>12,t:"Surto de doenças infantis",d:r=>`Uma onda de sarampo e diarreia atinge crianças pequenas em ${r.n}. Muitos bebês não chegam a completar 1 ano.`,
+ o:[{l:"Vacinação em massa + saneamento",k:35,e:{mi:-14,mor:-1.5,ev:2.5,apr:10},m:"Saneamento e vacina são as armas mais eficazes contra a mortalidade infantil. Com menos bebês morrendo, a expectativa de vida sobe.",cs:[23,9,5],fx:"good"},
+    {l:"Distribuir soro caseiro",k:10,e:{mi:-5,mor:-.4,apr:2},m:"Ajuda, mas não resolve a causa — a água contaminada continua lá.",cs:[23],fx:"good"},
+    {l:"Esperar ajuda internacional",k:0,e:{mi:8,mor:1.2,ev:-1.5,apr:-12},m:"A mortalidade infantil dispara. Isso puxa a expectativa de vida média para baixo.",cs:[23,9,5],fx:"bad"}]},
+{id:"previd",r:["EU","NA","AS"],c:r=>r.ido>12,t:"A previdência vai quebrar",d:r=>`${r.n} tem cada vez mais aposentados e menos trabalhadores. A conta não fecha.`,
+ o:[{l:"Aumentar a idade de aposentadoria",k:15,e:{eco:6,apr:-14},dep:-6,m:"Mais gente continua na PEA. A razão de dependência cai, mas a população fica furiosa.",cs:[13,24,11],fx:"bad"},
+    {l:"Atrair imigrantes jovens",k:25,e:{mig:4,jov:1,ido:-1.2,eco:5,apr:-4},x:{from:["AF","LA","AS"],mig:-1},m:"Imigração rejuvenesce o país: chegam adultos em idade de trabalhar. Os países de origem sofrem emigração.",cs:[16,17,20,13],fx:"mig"},
+    {l:"Subir impostos dos jovens",k:5,e:{eco:-6,fec:-.15,apr:-8,mig:-1.5},m:"Jovens sobrecarregados têm menos filhos e alguns emigram — o envelhecimento piora.",cs:[11,8,17],fx:"bad"}]},
+{id:"exodo",r:["AF","AS","LA"],c:r=>r.urb<80,t:"Seca no campo",d:r=>`Uma seca histórica atinge as zonas agrícolas de ${r.n}. Milhões de agricultores ameaçam ir para as capitais.`,
+ o:[{l:"Irrigação e crédito rural",k:30,e:{urb:-1,eco:4,apr:8},m:"Com renda no campo, a população rural fica. O êxodo rural desacelera.",cs:[22,15],fx:"good"},
+    {l:"Construir moradias nas cidades",k:25,e:{urb:7,eco:3,fec:-.15,apr:3},m:"Êxodo rural organizado: a urbanização avança rápido. Na cidade, as famílias tendem a ter menos filhos.",cs:[15,14,21,18],fx:"city"},
+    {l:"Não fazer nada",k:0,e:{urb:6,mor:.8,apr:-12},m:"Êxodo rural desordenado: favelas crescem, faltam saneamento e emprego. A urbanização sem planejamento eleva a mortalidade.",cs:[15,14,5],fx:"bad"}]},
+{id:"bebe",r:["EU","AS","NA","LA"],c:r=>r.fec<1.7,t:"Berços vazios",d:r=>`A taxa de fecundidade de ${r.n} está bem abaixo de 2,1 — o nível que repõe a população. Escolas estão fechando por falta de alunos.`,
+ o:[{l:"Bolsa-bebê + creche grátis",k:30,e:{fec:.3,nat:2.2,eco:-3,apr:6},m:"Políticas natalistas ajudam um pouco a fecundidade. Os efeitos costumam ser pequenos e caros.",cs:[8,4],fx:"good"},
+    {l:"Abrir as fronteiras",k:15,e:{mig:5,apr:-6},x:{from:["AF","LA"],mig:-1.2},m:"O saldo migratório compensa o crescimento vegetativo negativo: a população para de cair.",cs:[20,16,6,7],fx:"mig"},
+    {l:"Aceitar o encolhimento",k:0,e:{eco:-4,ido:1.5},m:"Crescimento vegetativo negativo: morrem mais pessoas do que nascem. A população envelhece e encolhe.",cs:[6,11,7],fx:"bad"}]},
+{id:"guerra",r:["AF","AS"],c:()=>true,t:"Guerra civil na fronteira",d:r=>`Um conflito armado explode em ${r.n}. Milhões de refugiados tentam fugir.`,
+ o:[{l:"Corredor humanitário para a Europa",k:20,e:{mig:-5,mor:1,apr:4},x:{to:"EU",mig:3.5},m:"Migração externa forçada: o saldo migratório da região fica negativo e o da Europa, positivo.",cs:[19,17,16,20],fx:"mig",to:"EU"},
+    {l:"Missão de paz",k:40,e:{mor:-.5,apr:12,eco:3},m:"Paz evita mortes e a fuga em massa. Os indicadores se estabilizam.",cs:[5],fx:"good"},
+    {l:"Fechar fronteiras vizinhas",k:0,e:{mor:3.5,ev:-3,apr:-15},m:"Sem rota de fuga, a mortalidade explode e a expectativa de vida cai.",cs:[5,9],fx:"bad"}]},
+{id:"saude",r:["AF","AS","LA"],c:r=>r.ev<75,t:"Hospitais em colapso",d:r=>`Em ${r.n}, faltam médicos e leitos. Doenças tratáveis ainda matam muita gente.`,
+ o:[{l:"Sistema universal de saúde",k:40,e:{mor:-2,ev:4,mi:-6,apr:12,eco:-2},m:"Com menos mortes e natalidade ainda alta, o crescimento vegetativo aumenta. É a fase 2 da transição demográfica.",cs:[5,9,6,10],fx:"good"},
+    {l:"Clínicas móveis no interior",k:20,e:{mor:-.8,ev:1.8,mi:-4,apr:5},m:"A população rural ganha acesso. A mortalidade cai devagar.",cs:[22,5,9],fx:"good"},
+    {l:"Privatizar tudo",k:0,e:{eco:5,ev:-1,mi:3,apr:-10},m:"Os mais pobres perdem acesso. A mortalidade infantil sobe.",cs:[23,9],fx:"bad"}]},
+{id:"tech",r:["NA","EU","AS"],c:r=>r.eco>50,t:"Robôs no lugar dos trabalhadores",d:r=>`Fábricas de ${r.n} estão automatizando tudo. Metade da PEA da indústria pode perder o emprego.`,
+ o:[{l:"Requalificação em massa",k:30,e:{eco:6,apr:8},m:"Quem está desempregado e procura trabalho continua na PEA. Requalificar evita que essas pessoas desistam.",cs:[13],fx:"good"},
+    {l:"Liberar automação total",k:5,e:{eco:10,apr:-14,mig:-1},m:"A economia cresce, mas parte da PEA fica sem trabalho e alguns emigram.",cs:[13,17],fx:"bad"},
+    {l:"Proibir robôs",k:10,e:{eco:-8,apr:4},m:"Os empregos ficam, mas a economia perde competitividade.",cs:[13],fx:"bad"}]},
+{id:"clima",r:["OC","AS","LA"],c:()=>true,t:"O mar está subindo",d:r=>`Ilhas e cidades costeiras de ${r.n} começam a ser engolidas pelo oceano.`,
+ o:[{l:"Realocar populações para o interior",k:30,e:{apr:6,eco:-2},m:"Migração interna planejada: as pessoas mudam de cidade sem sair do país. A densidade nas cidades do interior aumenta.",cs:[18,3],fx:"city"},
+    {l:"Acordo de vistos climáticos",k:20,e:{mig:-3,apr:2},x:{to:"NA",mig:2},m:"Migração externa: os moradores vão para outro país. O saldo migratório de origem fica negativo.",cs:[19,17,20],fx:"mig",to:"NA"},
+    {l:"Construir muralhas",k:45,e:{eco:-4,apr:4},m:"Caro, mas segura a população no lugar. Nada muda no saldo migratório.",cs:[20],fx:"good"}]},
+{id:"vazio",r:["OC","NA","LA"],c:r=>r.pop/r.area<35,t:"Territórios vazios",d:r=>`${r.n} tem enormes áreas quase sem habitantes. Investidores querem ocupar o interior.`,
+ o:[{l:"Programa de colonização do interior",k:25,e:{urb:-2,eco:4,apr:4},m:"Migração interna do litoral para o interior. A população rural cresce um pouco.",cs:[18,22,2],fx:"city"},
+    {l:"Vistos para trabalhadores estrangeiros",k:15,e:{mig:4,eco:5,apr:-3},x:{from:["AS","AF"],mig:-.6},m:"Imigração aumenta a população absoluta e a população relativa (hab/km²).",cs:[16,1,2],fx:"mig"},
+    {l:"Preservar como reserva ambiental",k:10,e:{apr:6},m:"A densidade demográfica continua baixa. Área grande e pouca gente = baixa população relativa.",cs:[3,2],fx:"good"}]},
+{id:"favela",r:["LA","AF","AS"],c:r=>r.urb>55,t:"Cidades sem estrutura",d:r=>`As periferias de ${r.n} cresceram sem esgoto, transporte ou escolas.`,
+ o:[{l:"Urbanizar as periferias",k:35,e:{mor:-1,mi:-5,ev:2,apr:12},m:"A urbanização só traz qualidade de vida quando a cidade tem infraestrutura.",cs:[14,21,23],fx:"city"},
+    {l:"Incentivar a volta ao campo",k:15,e:{urb:-4,eco:-2,apr:-2},m:"Movimento contrário ao êxodo rural. Raramente funciona em grande escala.",cs:[15,22],fx:"good"},
+    {l:"Remover as favelas à força",k:5,e:{apr:-20,mor:.5},m:"A população urbana não diminui — só se muda para outra periferia.",cs:[21],fx:"bad"}]},
+{id:"cerebro",r:["AF","LA","AS"],c:()=>true,t:"Fuga de cérebros",d:r=>`Os melhores médicos e engenheiros de ${r.n} estão indo trabalhar na Europa e nos EUA.`,
+ o:[{l:"Salários competitivos para ficarem",k:30,e:{mig:1,eco:4,apr:5},m:"Reduz a emigração qualificada. O saldo migratório melhora.",cs:[17,20],fx:"good"},
+    {l:"Deixar ir e cobrar remessas",k:0,e:{mig:-2.5,eco:2},x:{to:"NA",mig:1.5},m:"Emigração: o país perde gente em idade ativa. A PEA diminui.",cs:[17,13,20],fx:"mig",to:"NA"},
+    {l:"Proibir a saída",k:5,e:{apr:-16,mig:-.5},m:"Medida autoritária. Muitos saem ilegalmente mesmo assim.",cs:[17],fx:"bad"}]},
+{id:"censo",r:KEYS,c:()=>true,t:"Hora do Censo",d:r=>`O Censo de ${r.n} precisa ir a campo. Sem ele, ninguém sabe onde construir escolas e hospitais.`,
+ o:[{l:"Censo completo, casa a casa",k:25,e:{apr:8,eco:3},bonus:15,m:"O Censo Demográfico conta toda a população e suas condições de vida. Sem ele, todas as políticas são chutes.",cs:[0,1,12],fx:"good"},
+    {l:"Censo por amostragem",k:10,e:{apr:2},m:"Mais barato, mas menos preciso nas pequenas cidades.",cs:[0],fx:"good"},
+    {l:"Cancelar para economizar",k:-10,e:{apr:-10,eco:-3},m:"Governar sem dados: o próximo plano de saúde vai errar o alvo.",cs:[0],fx:"bad"}]},
+{id:"idosos",r:["EU","NA","AS"],c:r=>r.ido>14,t:"Explosão de idosos",d:r=>`Um em cada cinco habitantes de ${r.n} já tem mais de 65 anos.`,
+ o:[{l:"Cidades amigas do idoso",k:25,e:{ev:2,apr:10,eco:-2},m:"A expectativa de vida sobe ainda mais. Envelhecimento populacional não é problema por si só — é conquista que exige adaptação.",cs:[11,9,12],fx:"good"},
+    {l:"Cortar benefícios",k:-10,e:{ev:-1.5,mor:.8,apr:-18},m:"A razão de dependência continua a mesma, mas a vida dos idosos piora.",cs:[24,9],fx:"bad"},
+    {l:"Trabalho flexível 60+",k:10,e:{eco:4,apr:2},dep:-4,m:"Idosos que trabalham voltam à PEA e aliviam a razão de dependência.",cs:[13,24],fx:"good"}]},
+{id:"pandemia",r:KEYS,c:()=>true,t:"Nova pandemia",d:r=>`Um vírus respiratório foi detectado em ${r.n} e se espalha rápido.`,
+ o:[{l:"Lockdown + vacina rápida",k:35,e:{mor:.4,eco:-6,apr:3},m:"Poucas mortes, mas a economia sofre.",cs:[5],fx:"good"},
+    {l:"Manter tudo aberto",k:0,e:{mor:4,ev:-3,ido:-1,apr:-12},m:"A taxa de mortalidade dispara, principalmente entre idosos. A expectativa de vida cai.",cs:[5,9,11],fx:"bad"},
+    {l:"Fechar só fronteiras",k:10,e:{mor:1.8,mig:-2,apr:-3},m:"Barra a migração externa mas não o vírus que já chegou.",cs:[19,5],fx:"bad"}]},
+{id:"bonus",r:["AF","AS","LA"],c:r=>r.jov<35&&r.jov>18,t:"Bônus demográfico",d:r=>`${r.n} tem uma geração enorme em idade de trabalhar e poucos dependentes. Essa janela não dura para sempre.`,
+ o:[{l:"Investir pesado em empregos e ensino técnico",k:35,e:{eco:12,apr:10},m:"Com baixa razão de dependência, a PEA pode impulsionar a economia — o chamado bônus demográfico.",cs:[13,24,12],fx:"good"},
+    {l:"Exportar mão de obra",k:5,e:{mig:-3,eco:3},x:{to:"EU",mig:2},m:"Emigração dos jovens: o bônus é aproveitado por outro continente.",cs:[17,13],fx:"mig",to:"EU"},
+    {l:"Ignorar",k:0,e:{apr:-10,eco:-4},m:"Jovens sem emprego: a janela de oportunidade é desperdiçada.",cs:[13],fx:"bad"}]},
+];
+
+// ---------- ESTADO ----------
+let year=2025,round=0,cap=100,sel="AS",layer="dens",queue=[],step=0,pending=[],prev={},history=[],decCount=0;
+const ROUNDS=10,PER=3;
+for(const k of KEYS){R[k].p0=R[k].pop}
+
+// ---------- GLOBO ----------
+const world = Globe()(document.getElementById('globe'))
+ .globeImageUrl('earth-dark.jpg').backgroundImageUrl('night-sky.png')
+ .atmosphereColor('#38e1ff').atmosphereAltitude(.22)
+ .polygonSideColor(()=> 'rgba(10,20,40,.6)').polygonStrokeColor(()=> 'rgba(255,255,255,.08)')
+ .polygonsTransitionDuration(900)
+ .ringColor(d=>t=>d.col.replace('A',(1-t).toFixed(2))).ringMaxRadius(d=>d.rad).ringPropagationSpeed(4).ringRepeatPeriod(700)
+ .arcColor(d=>d.col).arcStroke(.7).arcDashLength(.4).arcDashGap(.15).arcDashAnimateTime(1600).arcAltitudeAutoScale(.45)
+ .htmlElementsData(KEYS.map(k=>({k,lat:R[k].lat,lng:R[k].lng})))
+ .htmlElement(d=>{const el=document.createElement('div');el.className='glabel';el.id='lab'+d.k;return el})
+ .htmlAltitude(.03)
+ .pointOfView({lat:20,lng:40,altitude:2.4});
+world.controls().autoRotate=true;world.controls().autoRotateSpeed=.35;
+let feats=[],flash={};
+fetch('countries.geojson').then(r=>r.json()).then(g=>{
+ feats=g.features.filter(f=>regionOf(f.properties));feats.forEach(f=>f.rk=regionOf(f.properties));
+ world.polygonsData(feats).onPolygonClick(f=>selectRegion(f.rk)).onPolygonHover(f=>{document.body.style.cursor=f?'pointer':''});
+ paint();});
+function range(k){const vs=KEYS.map(x=>val(R[x],k));return[Math.min(...vs),Math.max(...vs)]}
+const STOPS=[[27,58,138],[56,225,255],[255,224,102],[255,84,112]];
+function ramp(t){t=Math.max(0,Math.min(1,t));const s=t*3,i=Math.min(2,Math.floor(s)),f=s-i,a=STOPS[i],b=STOPS[i+1];return a.map((v,j)=>Math.round(v+(b[j]-v)*f))}
+function paint(){
+ let [mn,mx]=range(layer);if(layer==="dens"){mn=Math.log(mn);mx=Math.log(mx)}if(mx-mn<1e-6)mx=mn+1;
+ world.polygonCapColor(f=>{let v=val(R[f.rk],layer);if(layer==="dens")v=Math.log(v);const c=ramp((v-mn)/(mx-mn));
+   const fl=flash[f.rk];if(fl)return fl;return burnColor(f.rk,`rgba(${c},${f.rk===sel?.95:.78})`)})
+  .polygonAltitude(f=>(flash[f.rk]?.06:f.rk===sel?.025:.008));
+ const L=LAYERS.find(l=>l[0]===layer);const fm=IND.find(i=>i[0]===layer);const f=fm?fm[3]:(v=>v.toFixed(0)+"%");
+ const [a,b]=range(layer);lMin.textContent=f(a);lMax.textContent=f(b);
+ for(const k of KEYS){const el=document.getElementById('lab'+k);if(el)el.innerHTML=`<em>${R[k].n.toUpperCase()}</em>${fmtPop(R[k].pop)}`}
+}
+function fly(k,alt=1.9){world.controls().autoRotate=false;world.pointOfView({lat:R[k].lat,lng:R[k].lng,altitude:alt},1400)}
+let rings=[],arcs=[];
+function fx(k,type,to){
+ const col= type==="bad"?'rgba(255,84,112,A)':type==="good"?'rgba(78,240,160,A)':type==="city"?'rgba(255,224,102,A)':'rgba(56,225,255,A)';
+ rings.push({lat:R[k].lat,lng:R[k].lng,col,rad:type==="bad"?22:16});world.ringsData([...rings]);
+ flash[k]= type==="bad"?'rgba(255,84,112,.95)':type==="good"?'rgba(78,240,160,.9)':type==="city"?'rgba(255,224,102,.9)':'rgba(56,225,255,.9)';paint();
+ setTimeout(()=>{delete flash[k];paint()},1500);
+ setTimeout(()=>{rings=rings.slice(1);world.ringsData([...rings])},4500);
+ if(type==="city"){ // pontos de luz urbanos
+   const pts=Array.from({length:60},()=>({lat:R[k].lat+(Math.random()-.5)*22,lng:R[k].lng+(Math.random()-.5)*34,s:Math.random()}));
+   cityPts=pts;setPts();setTimeout(()=>{cityPts=[];setPts()},4000);}
+}
+function migArcs(list){ // list:[from,to]
+ arcs=list.flatMap(([a,b])=>Array.from({length:6},(_,i)=>({startLat:R[a].lat+(Math.random()-.5)*12,startLng:R[a].lng+(Math.random()-.5)*16,endLat:R[b].lat+(Math.random()-.5)*8,endLng:R[b].lng+(Math.random()-.5)*10,col:['rgba(255,181,71,.9)','rgba(56,225,255,.9)']})));
+ world.arcsData(arcs);setTimeout(()=>world.arcsData([]),6000);
+}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id);
+tabs.innerHTML=KEYS.map(k=>`<button class="tab" data-k="${k}">${R[k].n.replace("América ","Am. ")}</button>`).join("");
+tabs.onclick=e=>{const k=e.target.dataset.k;if(k){selectRegion(k);fly(k)}};
+layer=LAYERS[0][0];$('layer').innerHTML=LAYERS.map(l=>`<option value="${l[0]}">${l[1]}</option>`).join("");
+$('layer').onchange=e=>{layer=e.target.value;const L=LAYERS.find(l=>l[0]===layer);if(L[2]>=0)unlock(L[2]);paint()};
+function selectRegion(k){sel=k;renderLeft();paint()}
+function tagsOf(r){const d=der(r),t=[];
+ if(r.fec>3)t.push("Explosão populacional");if(d.dep<50&&r.jov<32)t.push("Bônus demográfico");if(r.ido>18)t.push("Envelhecida");
+ if(r.mig>2)t.push("Polo de imigração");if(r.mig<-1.5)t.push("Emigração forte");if(d.dens<15)t.push("Vazio demográfico");if(d.dens>90)t.push("Superlotada");
+ if(d.veg<0)t.push("Crescimento vegetativo negativo");if(r.urb<50)t.push("Majoritariamente rural");return t}
+function renderLeft(changed=[]){
+ const r=R[sel];$('rName').textContent=r.n;$('rArea').textContent=r.area+" mi km²";
+ $('rTags').innerHTML=tagsOf(r).map(t=>`<span class="tag">${t}</span>`).join("")||'<span class="tag" style="background:rgba(78,240,160,.12);color:var(--good)">Estável</span>';
+ const p=prev[sel]||{};
+ $('inds').innerHTML=IND.map(([k,lab,ci,f])=>{const v=val(r,k),pv=p[k];let dd="";
+   if(pv!==undefined&&Math.abs(v-pv)>.005){const good=["ev","pea","eco"].includes(k)?v>pv:["mi","mor","dep"].includes(k)?v<pv:null;
+     const pct=k==="pop"?((v/pv-1)*100).toFixed(1)+"%":(v-pv).toFixed(1);dd=`<span class="d ${good===null?'':good?'up':'dn'}">${v>pv?'▲':'▼'}${String(pct).replace('-','')}</span>`}
+   else dd='<span class="d"></span>';
+   return `<div class="ind ${changed.includes(k)?'flash':''}" title="${C[ci][1]}"><span>${lab}</span><span class="v">${f(v)}</span>${dd}</div>`}).join("");
+ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.k===sel));
+ drawPyr(r);
+ setTimeout(()=>document.querySelectorAll('.ind.flash').forEach(e=>e.classList.remove('flash')),1400);
+}
+function drawPyr(r){
+ const cv=$('pyr'),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext('2d');g.scale(dpr,dpr);
+ const ad=100-r.jov-r.ido,bands=[];
+ // 0-14 (3), 15-64 (10), 65+ (4)
+ const yw=[1,1,1].map((_,i)=>r.jov/3*(1+(r.fec-2)*.08*(1-i)));
+ const aw=Array.from({length:10},(_,i)=>i);const slope=(r.jov/3)-(r.ido/4);const aRaw=aw.map(i=>1+(slope/ad*10)*(4.5-i)*.25);const aS=aRaw.reduce((a,b)=>a+b);
+ const oRaw=[.42,.3,.18,.1];bands.push(...yw,...aRaw.map(x=>x/aS*ad),...oRaw.map(x=>x*r.ido));
+ const n=bands.length,bh=(H-14)/n,mx=Math.max(...bands),cx=W/2;
+ g.font='9px JetBrains Mono';g.fillStyle='#8b9abb';g.fillText('Homens',4,10);g.textAlign='right';g.fillText('Mulheres',W-4,10);g.textAlign='center';
+ bands.forEach((b,i)=>{const y=H-(i+1)*bh,w=(b/mx)*(cx-24);const old=i>=13,young=i<3;
+  g.fillStyle=young?'#4ef0a0':old?'#ffb547':'#38e1ff';g.globalAlpha=.85;
+  g.fillRect(cx-6-w,y+1,w,bh-2);g.fillRect(cx+6,y+1,w*(old?1.12:1),bh-2);g.globalAlpha=1;
+  if(i%3===0){g.fillStyle='#8b9abb';g.fillText(String(i*5),cx,y+bh-2)}});
+}
+function topbar(){const tp=KEYS.reduce((s,k)=>s+R[k].pop,0);$('tYear').textContent=year;$('tPop').textContent=fmtPop(tp);$('tCap').textContent=Math.round(cap);
+ const ap=KEYS.reduce((s,k)=>s+R[k].apr,0)/KEYS.length;$('tApr').textContent=Math.round(ap)+"%";$('tApr').style.color=ap<35?'var(--bad)':ap>60?'var(--good)':'';
+ $('gCount').textContent=unlocked.size+"/25"}
+function unlock(i){if(!unlocked.has(i)){unlocked.add(i);news(`Conceito desbloqueado: <b>${C[i][0]}</b>`,"",'GLOSSÁRIO')}topbar()}
+function news(h,cls="",tag){const el=document.createElement('div');el.className='news glass '+cls;el.innerHTML=`<small>${tag||year}</small>${h}`;$('feed').prepend(el);while($('feed').children.length>14)$('feed').lastChild.remove()}
+function toast(t){const el=$('toast');el.textContent=t;el.classList.remove('show');void el.offsetWidth;el.classList.add('show')}
+$('bGloss').onclick=()=>{$('glList').innerHTML=C.map((c,i)=>unlocked.has(i)?`<div class="gi"><b>${i+1}. ${c[0]}</b>${c[1]}</div>`:`<div class="gi lock"><b>${i+1}. ???</b>Encontre este conceito no jogo.</div>`).join("");$('gloss').classList.remove('hidden')};
+
+// ---------- QUIZ ----------
+function quizCard(){
+ const pool=C.map((c,i)=>i).filter(i=>i>0);const ans=pool[Math.floor(Math.random()*pool.length)];
+ const opts=[ans];while(opts.length<4){const x=pool[Math.floor(Math.random()*pool.length)];if(!opts.includes(x))opts.push(x)}opts.sort(()=>Math.random()-.5);
+ card.innerHTML=`<span class="chip q">Prova do Censo · +15 <i class=coin></i></span><div class="ctitle">Qual conceito é este?</div><div class="cdesc">“${C[ans][1]}”</div>
+ <div class="opts">${opts.map(o=>`<button class="opt" data-o="${o}">${C[o][0]}</button>`).join("")}</div>`;
+ card.style.animation='none';void card.offsetWidth;card.style.animation='';
+ card.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const o=+b.dataset.o;card.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(+x.dataset.o===ans)x.classList.add('right')});
+  if(o===ans){addCoins(15,b);news(`Acertou a prova: <b>${C[ans][0]}</b>`,'good','QUIZ')}else{b.classList.add('wrong');news(`Errou a prova. Era <b>${C[ans][0]}</b>`,'bad','QUIZ')}
+  unlock(ans);topbar();const go=document.createElement('button');go.className='go';go.textContent='Avançar 5 anos ⏩';go.onclick=advance;card.appendChild(go)});
+}
+
+// ---------- DECISÃO ----------
+function pickDecisions(){
+ const out=[],used=new Set();let tries=0;
+ while(out.length<PER&&tries<200){tries++;const d=D[Math.floor(Math.random()*D.length)];if(used.has(d.id))continue;
+  const regs=d.r.filter(k=>d.c(R[k]));if(!regs.length)continue;const k=regs[Math.floor(Math.random()*regs.length)];
+  if(out.some(o=>o.k===k)&&tries<120)continue;used.add(d.id);out.push({d,k})}
+ return out}
+function prog(){return `<div class="prog">${Array.from({length:PER+1},(_,i)=>`<i class="${i<=step?'on':''}"></i>`).join("")}</div>`}
+function showDecision(){
+ if(step>=PER){quizCard();return}
+ const {d,k}=queue[step],r=R[k];selectRegion(k);fly(k);
+ fx(k,"mig");
+ card.innerHTML=`<span class="chip" style="background:${r.c}22;color:${r.c}">● ${r.n} · decisão ${step+1}/${PER}</span>
+ <div class="ctitle">${d.t}</div><div class="cdesc">${d.d(r)}</div>
+ <div class="opts">${d.o.map((o,i)=>`<button class="opt" data-i="${i}" ${o.k>cap?'disabled':''}><span>${o.l}</span><span class="cost">${o.k===0?'grátis':(o.k>0?'−':'+')+Math.abs(o.k)+' <i class=coin></i>'}</span></button>`).join("")}</div>${prog()}`;
+ card.style.animation='none';void card.offsetWidth;card.style.animation='';
+ card.querySelectorAll('.opt').forEach(b=>b.onclick=()=>choose(d,k,d.o[+b.dataset.i]));
+}
+const LBL=Object.fromEntries(IND.map(i=>[i[0],i[1]]));LBL.apr="Aprovação";LBL.eco="Economia";
+function snap(k){const r=R[k],o={};IND.forEach(([x])=>o[x]=val(r,x));o.apr=r.apr;o.eco=r.eco;return o}
+function applyEff(k,e){const r=R[k];for(const[f,v]of Object.entries(e)){r[f]+=v}clamp(r)}
+function clamp(r){r.fec=Math.max(.8,Math.min(7,r.fec));r.nat=Math.max(5,r.nat);r.mor=Math.max(4,r.mor);r.ev=Math.min(92,r.ev);r.mi=Math.max(1.5,r.mi);r.urb=Math.max(10,Math.min(97,r.urb));r.jov=Math.max(9,Math.min(50,r.jov));r.ido=Math.max(2,Math.min(38,r.ido));r.apr=Math.max(0,Math.min(100,r.apr));r.eco=Math.max(0,Math.min(100,r.eco));r.mig=Math.max(-10,Math.min(12,r.mig))}
+function choose(d,k,o){
+ addCoins(-o.k,card.querySelector(".opt[data-i='"+d.o.indexOf(o)+"']"));decCount++;const before=snap(k);KEYS.forEach(x=>prev[x]=snap(x));
+ applyEff(k,o.e);
+ if(o.dep){const r=R[k];r.eco+=2;r.jov=r.jov;} // aposentadoria tardia: PEA ampliada (simplificado)
+ if(o.bonus)setTimeout(()=>addCoins(o.bonus,card),900);
+ let arcsL=[];
+ if(o.x){if(o.x.to){applyEff(o.x.to,{mig:o.x.mig});arcsL.push([k,o.x.to])}
+   if(o.x.from){o.x.from.filter(f=>f!==k).forEach(f=>{applyEff(f,{mig:o.x.mig});arcsL.push([f,k])})}}
+ if(o.later)pending.push({k,at:round+o.later.in,...o.later});
+ if(o.fx==='bad')setTimeout(()=>hurt(k,9),700);else if(o.fx==='good')setTimeout(()=>hurt(k,-3),700);
+ history.push({y:year,r:R[k].n,t:d.t,c:o.l,fx:o.fx});
+ // efeito no globo
+ if(o.fx==="mig"&&arcsL.length){migArcs(arcsL);fx(k,"mig")}else fx(k,o.fx);
+ if(arcsL.length)world.pointOfView({lat:(R[arcsL[0][0]].lat+R[arcsL[0][1]].lat)/2,lng:(R[arcsL[0][0]].lng+R[arcsL[0][1]].lng)/2,altitude:2.6},1400);
+ const after=snap(k);const ch=Object.keys(after).filter(x=>Math.abs(after[x]-before[x])>.01);
+ renderLeft(ch);topbar();
+ news(`<b>${R[k].n}</b>: ${o.l}.`,o.fx==="bad"?'bad':o.fx==="good"?'good':'');
+ o.cs.forEach(unlock);
+ const dl=ch.filter(x=>x!=="pop").slice(0,8).map(x=>{const dv=after[x]-before[x];return `<div class="dl"><span>${LBL[x]}</span><b class="${dv>0?'up':'dn'}">${dv>0?'+':''}${dv.toFixed(1)}</b></div>`}).join("");
+ card.innerHTML=`<span class="chip" style="background:${R[k].c}22;color:${R[k].c}">● ${R[k].n}</span><div class="ctitle">${o.l}</div>
+ <div class="deltas">${dl}</div>
+ <div class="concept">${o.m}<br><br>Conceitos: ${o.cs.map(i=>`<b>${C[i][0]}</b>`).join(" · ")}</div>
+ ${o.later?'<div class="concept" style="border-color:rgba(255,84,112,.4);background:rgba(255,84,112,.08)">⚠ Esta decisão terá consequências no futuro.</div>':''}
+ <button class="go" id="nx">${step+1<PER?'Próxima crise →':'Prova do Censo →'}</button>${prog()}`;
+ card.style.animation='none';void card.offsetWidth;card.style.animation='';
+ $('nx').onclick=()=>{step++;showDecision()};
+}
+
+// ---------- SIMULAÇÃO (5 anos) ----------
+function simulate(){
+ KEYS.forEach(k=>prev[k]=snap(k));
+ for(const k of KEYS){const r=R[k],d=der(r);
+  r.pop*=Math.pow(1+d.cres/1000,5);
+  r.fec+=(1.55-r.fec)*.07*(r.urb/70);
+  r.ev+=(89-r.ev)*.045;r.mi*=.91;r.urb+=(92-r.urb)*.05;
+  const jt=r.fec*9+3;r.jov+=(jt-r.jov)*.18;
+  r.ido+= .25+ (r.ev>72?.6:.2) + (r.fec<1.8?.5:0) - (r.mig>2?.3:0);
+  r.nat+=(r.fec*7.6*(1-r.ido/150)-r.nat)*.5;
+  r.mor+=((2+r.ido*.45+r.mi*.07+(85-r.ev)*.12)-r.mor)*.5;
+  r.mig*=.75;r.apr+=(55-r.apr)*.12;r.eco+=(r.urb-60)*.03+(30-der(r).dep)*.02+1;
+  clamp(r)}
+ // consequências atrasadas
+ pending=pending.filter(p=>{if(p.at<=round){applyEff(p.k,p.e);news(`<b>${R[p.k].n}</b> — ${p.msg}`,'bad','CONSEQUÊNCIA');fx(p.k,"bad");hurt(p.k,6);return false}return true});
+}
+function advance(){
+ round++;year+=5;simulate();setTimeout(()=>addCoins(30,card),600);
+ toast(year);world.controls().autoRotate=true;world.pointOfView({altitude:2.5},1500);
+ KEYS.forEach(k=>{const v=der(R[k]).veg;if(R[k].ido>20&&!R[k].f20){R[k].f20=1;news(`<b>${R[k].n}</b> passou de 20% de idosos.`,'bad','CENSO')}
+   if(v<0&&!R[k].fv){R[k].fv=1;news(`<b>${R[k].n}</b>: já morre mais gente do que nasce.`,'bad','CENSO')}});
+ const tp=KEYS.reduce((s,k)=>s+R[k].pop,0);news(`Censo ${year}: população mundial de <b>${fmtPop(tp)}</b>.`,'','CENSO');
+ renderLeft(Object.keys(LBL));topbar();paint();
+ KEYS.forEach(k=>{if(R[k].apr<30||R[k].ev<60)hurt(k,4)});if(hp<=0)return;
+ const ap=KEYS.reduce((s,k)=>s+R[k].apr,0)/KEYS.length;
+ if(ap<25)return finish(false);
+ if(round>=ROUNDS)return finish(true);
+ censusCard();
+}
+function censusCard(){
+ card.innerHTML=`<span class="chip">Relatório do Censo · ${year}</span><div class="ctitle">Os últimos 5 anos</div>
+ <table><tr><th>Região</th><th>Pop.</th><th>Veget.</th><th>Migr.</th></tr>${KEYS.map(k=>{const r=R[k],d=der(r),p=prev[k];
+ return `<tr><td>${r.n}</td><td class="mono">${fmtPop(r.pop)} <span class="${r.pop>p.pop?'up':'dn'}">${r.pop>p.pop?'▲':'▼'}</span></td><td class="mono ${d.veg<0?'dn':''}">${d.veg.toFixed(1)}</td><td class="mono ${r.mig<0?'dn':'up'}">${r.mig.toFixed(1)}</td></tr>`}).join("")}</table>
+ <div class="concept"><b>+30 moedas</b> de salário do governo. O mundo seguiu a <b>transição demográfica</b>: com urbanização e saúde, a fecundidade cai e a população envelhece.</div>
+ <button class="go" id="nx">Abrir crises de ${year} →</button>`;
+ card.style.animation='none';void card.offsetWidth;card.style.animation='';unlock(10);
+ $('nx').onclick=startRound;
+}
+function startRound(){step=0;queue=pickDecisions();showDecision()}
+function finish(win,doom){if($('end').classList.contains('hidden')===false)return;
+ const tp=KEYS.reduce((s,k)=>s+R[k].pop,0);
+ const sc=KEYS.reduce((s,k)=>{const r=R[k];return s+(r.ev-60)*2+(50-r.mi)+r.apr*.6+r.eco*.4},0)/KEYS.length;
+ const g=!win?"F":(sc+(hp-60)*.5)>120?"S":sc>105?"A":sc>90?"B":sc>75?"C":"D";
+ $('endBox').innerHTML=`<div class="sub">${win?'Mandato concluído · 2075':doom?'Fim do mundo · '+year:'Você foi deposto'}</div>
+ <div style="display:flex;gap:24px;align-items:center;margin-top:10px"><div class="grade">${g}</div><div><div class="disp" style="font-size:22px;font-weight:700">${win?'O mundo chegou a 2075 com '+Math.round(hp)+'% de saúde':doom?'O planeta entrou em colapso total':'A aprovação mundial caiu abaixo de 25%'}</div><p>População mundial: <b>${fmtPop(tp)}</b> · ${decCount} decisões · ${unlocked.size}/25 conceitos aprendidos</p></div></div>
+ <table><tr><th>Região</th><th>Pop.</th><th>Fecund.</th><th>Exp. vida</th><th>Idosos</th><th>Urbana</th><th>Dependência</th></tr>
+ ${KEYS.map(k=>{const r=R[k],d=der(r);return `<tr><td>${r.n}</td><td class="mono">${fmtPop(r.pop)}</td><td class="mono">${r.fec.toFixed(2)}</td><td class="mono">${r.ev.toFixed(1)}</td><td class="mono">${r.ido.toFixed(1)}%</td><td class="mono">${r.urb.toFixed(0)}%</td><td class="mono">${d.dep.toFixed(0)}%</td></tr>`}).join("")}</table>
+ <div class="concept">Pergunta para a turma: qual decisão vocês desfariam — e qual indicador do Censo prova isso?</div>
+ <button class="go" onclick="location.reload()">Jogar de novo</button>`;
+ $('end').classList.remove('hidden');
+}
+
+
+
+// ---------- FIM DO MUNDO ----------
+let hp=100;const dmg=Object.fromEntries(KEYS.map(k=>[k,0]));let firePts=[],stage=0;
+const STG=[[75,"O planeta começa a sofrer","Fumaça sobe das regiões afetadas."],[50,"Alerta global","Incêndios e crises se espalham pelo mundo."],[25,"O mundo está em colapso","Mais uma sequência de decisões ruins e é o fim."]];
+function hurt(k,n){hp=Math.max(0,Math.min(100,hp-n));if(k)dmg[k]=Math.max(0,dmg[k]+(n>0?1:-.6));
+ if(n>0){document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake')}
+ doomFx();
+ while(stage<3&&hp<=STG[stage][0]){toast(STG[stage][1]);news(`<b>${STG[stage][1]}.</b> ${STG[stage][2]}`,'bad','PLANETA');stage++}
+ if(hp>STG[Math.max(0,stage-1)][0]+10&&stage>0)stage--;
+ if(hp<=0)setTimeout(()=>finish(false,true),1600);}
+function doomFx(){const t=1-hp/100;
+ $('tHp').textContent=Math.round(hp)+'%';$('tHp').style.color=hp<30?'var(--bad)':hp<60?'var(--ac2)':'var(--good)';
+ $('hpBar').style.width=hp+'%';$('hpBar').style.backgroundPosition=`${-(1-hp/100)*0}px 0`;
+ $('vig').style.opacity=Math.max(0,t*1.3-.2);$('ash').style.opacity=t>.45?(t-.45)*1.6:0;
+ const a=[56,225,255],b=[255,60,40];world.atmosphereColor(`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`).atmosphereAltitude(.22+t*.12);
+ firePts=KEYS.flatMap(k=>Array.from({length:Math.round(dmg[k]*7)},(_,i)=>{const sd=(i*97+k.charCodeAt(0)*13)%100/100,sd2=(i*53+k.charCodeAt(1)*7)%100/100;return{lat:R[k].lat+(sd-.5)*24,lng:R[k].lng+(sd2-.5)*34,s:sd2,fire:1}}));
+ setPts();paint();}
+let cityPts=[];
+function setPts(){world.pointsData([...firePts,...cityPts]).pointColor(d=>d.fire?(d.s>.5?'#ff5a1f':'#ffb547'):'#ffe066').pointAltitude(d=>d.fire?.03+d.s*.18:.02+d.s*.12).pointRadius(d=>d.fire?.55:.35).pointsTransitionDuration(800)}
+function burnColor(k,rgba){const d=Math.min(.85,dmg[k]/3);if(!d)return rgba;const m=rgba.match(/[\d.]+/g).map(Number);const tgt=[70,12,8];return `rgba(${m.slice(0,3).map((v,i)=>Math.round(v+(tgt[i]-v)*d)).join(',')},${m[3]??1})`}
+
+// ---------- MOEDAS ----------
+function addCoins(n,fromEl){if(!n)return;cap+=n;const box=$('cofre').getBoundingClientRect(),src=(fromEl||card).getBoundingClientRect();
+ const cx=box.left+20,cy=box.top+box.height/2,sx=src.left+src.width/2,sy=src.top+20;const cnt=Math.min(12,Math.max(3,Math.round(Math.abs(n)/4)));
+ for(let i=0;i<cnt;i++){const c=document.createElement('i');c.className='coin fly';const [ax,ay,bx,by]=n>0?[sx,sy,cx,cy]:[cx,cy,sx,sy];
+  c.style.left=(ax+(Math.random()-.5)*60)+'px';c.style.top=(ay+(Math.random()-.5)*30)+'px';document.body.appendChild(c);
+  setTimeout(()=>{c.style.transform=`translate(${bx-parseFloat(c.style.left)}px,${by-parseFloat(c.style.top)}px) scale(${n>0?.8:1.2})`;c.style.opacity=n>0?1:0},30+i*60);
+  setTimeout(()=>c.remove(),1100+i*60)}
+ setTimeout(()=>{topbar();$('cofre').classList.remove('bump');void $('cofre').offsetWidth;$('cofre').classList.add('bump');
+  const f=document.createElement('div');f.className='fnum';f.style.color=n>0?'#4ef0a0':'#ff5470';f.textContent=(n>0?'+':'−')+Math.abs(n);f.style.left=(box.left+40)+'px';f.style.top=(box.bottom+4)+'px';document.body.appendChild(f);setTimeout(()=>f.remove(),1500)},n>0?900:200);
+ topbar();}
+
+// ---------- TUTORIAL ----------
+const TUT=[
+ [null,"Bem-vindo, governante","Você vai comandar o mundo de 2025 até 2075. Vamos ver, em 6 passos, como tudo funciona."],
+ ["#cofre","Suas moedas","Estas são suas moedas. Toda decisão custa moedas. A cada 5 anos você ganha +30, e acertar a prova do Censo dá +15. Se faltar moeda, algumas opções ficam bloqueadas."],
+ ["#card","Os cards de decisão","Aqui aparece cada crise. Leia, escolha uma das 3 opções e veja o custo em moedas ao lado. Depois o card mostra o que mudou e qual conceito do Censo estava em jogo."],
+ ["#globe","O globo reage","Depois de cada decisão o continente pisca: verde = boa, vermelho = crise. Linhas mostram migrações e pontos de luz mostram cidades crescendo. Você pode girar e clicar nos continentes."],
+ ["#left","O painel do Censo","Aqui ficam as taxas do continente selecionado. As setas mostram o que subiu ou desceu. Embaixo, a pirâmide etária muda conforme suas escolhas."],
+ ["#legend","Mude o mapa","Escolha o que as cores do globo mostram: densidade, fecundidade, expectativa de vida, migração..."],
+ ["#saude","Saúde do planeta","Cada decisão ruim destrói um pouco o mundo: aparecem incêndios, o céu fica vermelho e a tela treme. Decisões boas curam. Se chegar a 0%, o mundo acaba."],
+ ["#tApr","Não perca o povo","Esta é a aprovação mundial. Se cair abaixo de 25%, você é deposto. Equilibre bons indicadores e moedas."],
+ ["#bGloss","Glossário","Cada conceito que aparece no jogo é liberado aqui. Tente desbloquear os 25 até 2075. Boa sorte!"]];
+let ti=0;
+function tut(){document.querySelectorAll('.tut-hi,.tut-up').forEach(e=>e.classList.remove('tut-hi','tut-up'));const box=$('tutBox');
+ if(ti>=TUT.length){box.classList.add('hidden');return}
+ const [sel_,t,d]=TUT[ti];let el=sel_&&document.querySelector(sel_);if(sel_==='#tApr')el=el.parentElement;
+ box.classList.remove('hidden');
+ box.innerHTML=`<span class="chip q">Tutorial · ${ti+1}/${TUT.length}</span><div class="ctitle">${t}</div><div class="cdesc">${d}</div>
+ <div class="dots">${TUT.map((_,i)=>`<i class="${i===ti?'on':''}"></i>`).join('')}</div>
+ <div class="tbar">${ti===0?'<button class="skip" id="tSkip">Pular</button>':'<button class="skip" id="tBack">← Voltar</button>'}<button class="go" id="tNext">${ti===TUT.length-1?'Começar a jogar':'Próximo →'}</button></div>`;
+ let x=innerWidth/2-170,y=innerHeight/2-120;
+ if(el){if(sel_!=='#globe'){el.classList.add('tut-hi');const up=el.closest('#top,#right');if(up)up.classList.add('tut-up')}else{x=innerWidth/2-170;y=innerHeight-300}
+  const r=el.getBoundingClientRect();
+  if(sel_==='#card'){x=r.left-360;y=Math.max(20,r.top)}else if(sel_==='#left'){x=r.right+16;y=120}else if(sel_==='#legend'){x=r.right+16;y=r.top-80}
+  else if(sel_!=='#globe'){x=Math.min(innerWidth-360,Math.max(10,r.left+r.width/2-170));y=r.bottom+16}}
+ if(innerWidth<820){x=10;y=innerHeight-330;box.style.width=(innerWidth-20)+'px'}
+ box.style.left=Math.max(10,x)+'px';box.style.top=Math.max(10,y)+'px';
+ $('tNext').onclick=()=>{ti++;tut()};if($('tSkip'))$('tSkip').onclick=()=>{ti=TUT.length;tut()};if($('tBack'))$('tBack').onclick=()=>{ti--;tut()};
+}
+
+// ---------- INÍCIO ----------
+renderLeft();topbar();
+news("Bem-vindo ao Conselho Mundial. Clique em um continente no globo para ver o Censo dele.","",'2025');
+$('bStart').onclick=()=>{$('intro').classList.add('hidden');toast("2025");setTimeout(()=>{startRound();setTimeout(()=>{ti=0;tut()},700)},900)};
+$('bHelp').onclick=()=>{ti=0;tut()};$('bTut').onclick=()=>$('bStart').click();
+window.addEventListener('resize',()=>{world.width(innerWidth).height(innerHeight);drawPyr(R[sel])});
+</script>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  const DEFAULT_LINE_HEIGHT = 16;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  const PICK_CAPABILITIES = ["pick"];
+  const PICK_CHAIN_LENGTH = 4;
+  const PICK_MAX_TEXT_CHARS = 120;
+  const PICK_MAX_HTML_CHARS = 300;
+
+  function truncate(value, maxChars) {
+    return value.length > maxChars ? value.slice(0, maxChars - 1) + "…" : value;
+  }
+
+  function isPickableElement(element) {
+    return (
+      element instanceof Element &&
+      element !== document.documentElement &&
+      element !== document.body
+    );
+  }
+
+  function resolvePickTarget(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const element = document.elementFromPoint(x, y);
+    return isPickableElement(element) ? element.closest("svg") || element : null;
+  }
+
+  function pickLabel(element) {
+    if (element.id) return element.localName + "#" + element.id;
+    return [element.localName].concat(Array.from(element.classList).slice(0, 2)).join(".");
+  }
+
+  // Only attributes that help find the element in source. data-* values and URL
+  // query strings or fragments can carry tokens.
+  const PICK_ATTRIBUTES = new Set([
+    "id",
+    "class",
+    "name",
+    "type",
+    "role",
+    "alt",
+    "aria-label",
+    "href",
+    "src",
+  ]);
+
+  function pickAttributeValue(attribute) {
+    return attribute.name === "href" || attribute.name === "src"
+      ? attribute.value.split(/[?#]/)[0]
+      : attribute.value;
+  }
+
+  function describePickElement(element) {
+    const chain = [];
+    for (
+      let current = element;
+      isPickableElement(current) && chain.length < PICK_CHAIN_LENGTH;
+      current = current.parentElement
+    ) {
+      chain.unshift(current);
+    }
+    const attributes = Array.from(element.attributes)
+      .filter((attribute) => PICK_ATTRIBUTES.has(attribute.name))
+      .map((attribute) => ` ${attribute.name}="${pickAttributeValue(attribute).replace(/"/g, "&quot;")}"`)
+      .join("");
+    const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
+    return {
+      chain: chain.map(pickLabel),
+      html: truncate(`<${element.localName}${attributes}>`, PICK_MAX_HTML_CHARS),
+      text: text ? truncate(text, PICK_MAX_TEXT_CHARS) : undefined,
+    };
+  }
+
+  // Hover asks once per frame, and innerText on a large section forces layout,
+  // so only the rect is re-read while the pointer stays on the same element.
+  // Clicks ask for fresh details since the page may have changed the element.
+  let lastPick = null;
+
+  function describePickTarget(element, fresh) {
+    if (fresh || lastPick?.element !== element) {
+      lastPick = { element, details: describePickElement(element) };
+    }
+    const rect = element.getBoundingClientRect();
+    return {
+      rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+      ...lastPick.details,
+    };
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      capabilities: PICK_CAPABILITIES,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_PICK") {
+      const element = resolvePickTarget(event.data.x, event.data.y);
+      postToTrustedTop({
+        type: "INLINE_EDIT_PICK_RESULT",
+        seq: event.data.seq,
+        target: element ? describePickTarget(element, event.data.fresh === true) : null,
+      });
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_BY") {
+      const { deltaX, deltaY, deltaMode } = event.data;
+      if (!scrollForwarding || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+      if (deltaMode !== 0 && deltaMode !== 1 && deltaMode !== 2) return;
+      const lineHeight =
+        parseFloat(getComputedStyle(document.documentElement).lineHeight) || DEFAULT_LINE_HEIGHT;
+      const scaleX = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerWidth : 1;
+      const scaleY = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerHeight : 1;
+      // The selection overlay receives the wheel event instead of this iframe.
+      // Instant scrolling preserves trackpad deltas even on smooth-scroll sites.
+      window.scrollBy({ left: deltaX * scaleX, top: deltaY * scaleY, behavior: "instant" });
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body>
+</html>
