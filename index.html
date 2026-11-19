@@ -136,10 +136,35 @@ th{color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.1e
 #saude .hb i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff5470,#ffb547,#4ef0a0);background-size:150px 100%;transition:width 1s}
 #saude b{font-family:"JetBrains Mono";font-size:13px;margin-left:8px}
 .shake{animation:shake .5s}@keyframes shake{20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-1px)}}
+
+#boom{position:fixed;inset:0;z-index:18;pointer-events:none}
+#whiteout{position:fixed;inset:0;z-index:19;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+#globe{transition:transform 1.2s cubic-bezier(.6,-.4,.8,.4),opacity 1.2s,filter 1.5s}
+body.super #globe{filter:saturate(1.4) brightness(1.15) drop-shadow(0 0 60px rgba(120,255,200,.6))}
+#halo{position:fixed;left:50%;top:50%;width:min(80vh,80vw);height:min(80vh,80vw);transform:translate(-50%,-50%);border-radius:50%;z-index:2;pointer-events:none;opacity:0;transition:opacity 2s;
+ background:conic-gradient(from 0deg,rgba(78,240,160,.0),rgba(78,240,160,.35),rgba(255,224,102,.35),rgba(56,225,255,.35),rgba(78,240,160,0));filter:blur(30px);animation:spin 10s linear infinite}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+body.super #halo{opacity:1}
+.sumgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sbox{padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.sbox h4{font-family:Unbounded;font-size:13px;margin-bottom:8px;color:var(--ac)}
+.hist{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow:auto;font-size:12px}
+.hist div{display:flex;gap:8px;align-items:flex-start;padding:5px 7px;border-radius:7px;background:rgba(255,255,255,.03)}
+.hist i{font-style:normal;font-family:'JetBrains Mono';color:var(--mut);font-size:10.5px;min-width:34px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:4px}
+.qs{counter-reset:q;display:flex;flex-direction:column;gap:8px;font-size:13.5px;line-height:1.45}
+.qs div{counter-increment:q;padding:10px 12px 10px 40px;position:relative;border-radius:10px;background:rgba(255,181,71,.07);border:1px solid rgba(255,181,71,.25)}
+.qs div::before{content:counter(q);position:absolute;left:12px;top:9px;font-family:Unbounded;font-weight:900;color:var(--ac2)}
+.big3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.big3 div{padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);text-align:center}
+.big3 b{display:block;font-family:Unbounded;font-size:24px}
+.big3 span{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em}
+#endBox{max-width:1000px}
+@media(max-width:820px){.sumgrid,.big3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div id="globe"></div><div id="vig"></div><div id="ash"></div>
+<div id="halo"></div><div id="globe"></div><canvas id="boom"></canvas><div id="whiteout"></div><div id="vig"></div><div id="ash"></div>
 
 <div id="top" class="glass">
   <div class="stat" id="yearBox"><b id="tYear">2025</b><span>Ano</span></div>
@@ -339,6 +364,7 @@ const D = [
 let year=2025,round=0,cap=100,sel="AS",layer="dens",queue=[],step=0,pending=[],prev={},history=[],decCount=0;
 const ROUNDS=10,PER=3;
 for(const k of KEYS){R[k].p0=R[k].pop}
+const INIT={};
 
 // ---------- GLOBO ----------
 const world = Globe()(document.getElementById('globe'))
@@ -476,7 +502,7 @@ function choose(d,k,o){
  if(o.x){if(o.x.to){applyEff(o.x.to,{mig:o.x.mig});arcsL.push([k,o.x.to])}
    if(o.x.from){o.x.from.filter(f=>f!==k).forEach(f=>{applyEff(f,{mig:o.x.mig});arcsL.push([f,k])})}}
  if(o.later)pending.push({k,at:round+o.later.in,...o.later});
- if(o.fx==='bad')setTimeout(()=>hurt(k,9),700);else if(o.fx==='good')setTimeout(()=>hurt(k,-3),700);
+ if(o.fx==='bad')setTimeout(()=>hurt(k,9),700);else if(o.fx==='good')setTimeout(()=>hurt(k,-5),700);
  history.push({y:year,r:R[k].n,t:d.t,c:o.l,fx:o.fx});
  // efeito no globo
  if(o.fx==="mig"&&arcsL.length){migArcs(arcsL);fx(k,"mig")}else fx(k,o.fx);
@@ -518,7 +544,7 @@ function advance(){
    if(v<0&&!R[k].fv){R[k].fv=1;news(`<b>${R[k].n}</b>: já morre mais gente do que nasce.`,'bad','CENSO')}});
  const tp=KEYS.reduce((s,k)=>s+R[k].pop,0);news(`Censo ${year}: população mundial de <b>${fmtPop(tp)}</b>.`,'','CENSO');
  renderLeft(Object.keys(LBL));topbar();paint();
- KEYS.forEach(k=>{if(R[k].apr<30||R[k].ev<60)hurt(k,4)});if(hp<=0)return;
+ KEYS.forEach(k=>{if(R[k].apr<30||R[k].ev<60)hurt(k,4)});hpLog.push([year,hp]);if(hp<=0)return;
  const ap=KEYS.reduce((s,k)=>s+R[k].apr,0)/KEYS.length;
  if(ap<25)return finish(false);
  if(round>=ROUNDS)return finish(true);
@@ -534,15 +560,39 @@ function censusCard(){
  $('nx').onclick=startRound;
 }
 function startRound(){step=0;queue=pickDecisions();showDecision()}
-function finish(win,doom){if($('end').classList.contains('hidden')===false)return;
- const tp=KEYS.reduce((s,k)=>s+R[k].pop,0);
- const sc=KEYS.reduce((s,k)=>{const r=R[k];return s+(r.ev-60)*2+(50-r.mi)+r.apr*.6+r.eco*.4},0)/KEYS.length;
- const g=!win?"F":(sc+(hp-60)*.5)>120?"S":sc>105?"A":sc>90?"B":sc>75?"C":"D";
- $('endBox').innerHTML=`<div class="sub">${win?'Mandato concluído · 2075':doom?'Fim do mundo · '+year:'Você foi deposto'}</div>
- <div style="display:flex;gap:24px;align-items:center;margin-top:10px"><div class="grade">${g}</div><div><div class="disp" style="font-size:22px;font-weight:700">${win?'O mundo chegou a 2075 com '+Math.round(hp)+'% de saúde':doom?'O planeta entrou em colapso total':'A aprovação mundial caiu abaixo de 25%'}</div><p>População mundial: <b>${fmtPop(tp)}</b> · ${decCount} decisões · ${unlocked.size}/25 conceitos aprendidos</p></div></div>
- <table><tr><th>Região</th><th>Pop.</th><th>Fecund.</th><th>Exp. vida</th><th>Idosos</th><th>Urbana</th><th>Dependência</th></tr>
- ${KEYS.map(k=>{const r=R[k],d=der(r);return `<tr><td>${r.n}</td><td class="mono">${fmtPop(r.pop)}</td><td class="mono">${r.fec.toFixed(2)}</td><td class="mono">${r.ev.toFixed(1)}</td><td class="mono">${r.ido.toFixed(1)}%</td><td class="mono">${r.urb.toFixed(0)}%</td><td class="mono">${d.dep.toFixed(0)}%</td></tr>`}).join("")}</table>
- <div class="concept">Pergunta para a turma: qual decisão vocês desfariam — e qual indicador do Censo prova isso?</div>
+function finish(win,doom){if(!$('end').classList.contains('hidden'))return;
+ if(hpLog[hpLog.length-1][0]!==year)hpLog.push([year,hp]);else hpLog[hpLog.length-1][1]=hp;
+ const tp=KEYS.reduce((s,k)=>s+R[k].pop,0),tp0=KEYS.reduce((s,k)=>s+INIT[k].pop,0);
+ const sc=KEYS.reduce((s,k)=>{const r=R[k];return s+(r.ev-60)*2+(50-r.mi)+r.apr*.6+r.eco*.4},0)/KEYS.length+(hp-60)*.5;
+ const g=!win?"F":sc>120?"S":sc>105?"A":sc>90?"B":sc>75?"C":"D";
+ const good=history.filter(h=>h.fx==='good').length,bad=history.filter(h=>h.fx==='bad').length,mig=history.filter(h=>h.fx==='mig'||h.fx==='city').length;
+ const st=superOn?'Super planeta':doom?'Planeta explodiu':win?'Planeta sobreviveu':'Governo deposto';
+ // gráfico saúde
+ const W=420,H=110,pts=hpLog.map(([y,v],i)=>[20+i*(W-40)/Math.max(1,hpLog.length-1),H-15-v/100*(H-30)]);
+ const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%"><line x1="20" x2="${W-20}" y1="${H-15}" y2="${H-15}" stroke="#2a3a5a"/><line x1="20" x2="${W-20}" y1="${H-15-(H-30)}" y2="${H-15-(H-30)}" stroke="#4ef0a0" stroke-dasharray="3 4" opacity=".5"/>
+ <polyline fill="none" stroke="#38e1ff" stroke-width="3" points="${pts.map(p=>p.join(',')).join(' ')}"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${hpLog[i][1]>=60?'#4ef0a0':'#ff5470'}"/><text x="${p[0]}" y="${H-2}" font-size="9" fill="#8b9abb" text-anchor="middle" font-family="JetBrains Mono">${i%2===0?hpLog[i][0]:''}</text>`).join('')}</svg>`;
+ // maiores mudanças
+ const chg=[];KEYS.forEach(k=>{const a=INIT[k],b=snap(k);[["fec","Fecundidade",2],["ev","Expectativa de vida",1],["ido","Idosos %",1],["urb","Urbanização %",0],["mi","Mortalidade infantil",1],["dep","Dependência %",0]].forEach(([f,l,dp])=>chg.push({k,l,a:a[f],b:b[f],dp,rel:Math.abs(b[f]-a[f])/(Math.abs(a[f])+1)}))});
+ chg.sort((x,y)=>y.rel-x.rel);
+ const worst=history.filter(h=>h.fx==='bad').slice(-1)[0],best=history.filter(h=>h.fx==='good')[0];
+ const oldest=KEYS.reduce((m,k)=>R[k].ido>R[m].ido?k:m),young=KEYS.reduce((m,k)=>R[k].jov>R[m].jov?k:m);
+ const Q=[
+  worst?`Em ${worst.y}, a turma escolheu “${worst.c}” para ${worst.r}. Qual taxa do Censo mostra que foi uma má decisão? O que vocês fariam diferente?`:'A turma quase não tomou decisões ruins. Qual escolha foi a mais arriscada, mesmo assim?',
+  `${R[oldest].n} terminou com ${R[oldest].ido.toFixed(1)}% de idosos. Desenhe como seria a pirâmide etária dela. Quais problemas o envelhecimento populacional traz?`,
+  `${R[young].n} ainda tem ${R[young].jov.toFixed(0)}% de jovens e fecundidade de ${R[young].fec.toFixed(1)}. Em que fase da transição demográfica ela está?`,
+  `A população mundial foi de ${fmtPop(tp0)} para ${fmtPop(tp)}. O crescimento veio mais do crescimento vegetativo ou do saldo migratório? Por quê?`,
+  best?`Qual conceito explica por que “${best.c}” (${best.r}, ${best.y}) melhorou o mundo?`:'Qual política vocês teriam usado para melhorar a mortalidade infantil?'];
+ $('endBox').innerHTML=`<div class="sub">Resumo da partida · ${st}</div>
+ <div style="display:flex;gap:24px;align-items:center;margin-top:10px"><div class="grade" style="color:${g==='F'?'var(--bad)':g==='S'?'var(--good)':'var(--ac)'}">${g}</div><div><div class="disp" style="font-size:24px;font-weight:700">${superOn?'Vocês criaram um super planeta':doom?'O planeta explodiu em '+year:win?'O mundo chegou a 2075':'A aprovação caiu abaixo de 25%'}</div>
+ <p>${history.length} decisões · ${unlocked.size}/25 conceitos · saúde final ${Math.round(hp)}%</p></div></div>
+ <div class="big3"><div><b class="up">${good}</b><span>Decisões boas</span></div><div><b class="dn">${bad}</b><span>Decisões ruins</span></div><div><b style="color:var(--ac)">${mig}</b><span>Migrações e cidades</span></div></div>
+ <div class="sumgrid">
+  <div class="sbox"><h4>Saúde do planeta ao longo do tempo</h4>${svg}</div>
+  <div class="sbox"><h4>As maiores mudanças</h4>${chg.slice(0,6).map(c=>`<div class="dl" style="margin-bottom:4px"><span>${R[c.k].n} · ${c.l}</span><b>${c.a.toFixed(c.dp)} → <span class="${c.b>c.a?'up':'dn'}">${c.b.toFixed(c.dp)}</span></b></div>`).join('')}</div>
+  <div class="sbox"><h4>Linha do tempo das decisões</h4><div class="hist">${history.map(h=>`<div><span class="dot" style="background:${h.fx==='bad'?'#ff5470':h.fx==='good'?'#4ef0a0':'#38e1ff'}"></span><i>${h.y}</i><span><b>${h.r}</b> — ${h.t}: ${h.c}</span></div>`).join('')||'<div>Nenhuma decisão.</div>'}</div></div>
+  <div class="sbox"><h4>Censo final por região</h4><table style="margin:0"><tr><th>Região</th><th>Pop.</th><th>Fec.</th><th>Vida</th><th>Idosos</th></tr>${KEYS.map(k=>{const r=R[k];return `<tr><td>${r.n}</td><td class="mono">${fmtPop(r.pop)}</td><td class="mono">${r.fec.toFixed(1)}</td><td class="mono">${r.ev.toFixed(0)}</td><td class="mono">${r.ido.toFixed(0)}%</td></tr>`}).join('')}</table></div>
+ </div>
+ <div class="sbox" style="margin-top:12px"><h4 style="color:var(--ac2)">Para a turma discutir</h4><div class="qs">${Q.map(q=>`<div>${q}</div>`).join('')}</div></div>
  <button class="go" onclick="location.reload()">Jogar de novo</button>`;
  $('end').classList.remove('hidden');
 }
@@ -550,24 +600,45 @@ function finish(win,doom){if($('end').classList.contains('hidden')===false)retur
 
 
 // ---------- FIM DO MUNDO ----------
-let hp=100;const dmg=Object.fromEntries(KEYS.map(k=>[k,0]));let firePts=[],stage=0;
-const STG=[[75,"O planeta começa a sofrer","Fumaça sobe das regiões afetadas."],[50,"Alerta global","Incêndios e crises se espalham pelo mundo."],[25,"O mundo está em colapso","Mais uma sequência de decisões ruins e é o fim."]];
+let hp=60,superOn=false,boomed=false;const hpLog=[[2025,60]];const dmg=Object.fromEntries(KEYS.map(k=>[k,0]));let firePts=[],stage=0;
+const STG=[[45,"O planeta começa a sofrer","Fumaça sobe das regiões afetadas."],[30,"Alerta global","Incêndios e crises se espalham pelo mundo."],[15,"O mundo está em colapso","Mais uma sequência de decisões ruins e é o fim."]];
 function hurt(k,n){hp=Math.max(0,Math.min(100,hp-n));if(k)dmg[k]=Math.max(0,dmg[k]+(n>0?1:-.6));
  if(n>0){document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake')}
  doomFx();
+ checkSuper();
  while(stage<3&&hp<=STG[stage][0]){toast(STG[stage][1]);news(`<b>${STG[stage][1]}.</b> ${STG[stage][2]}`,'bad','PLANETA');stage++}
  if(hp>STG[Math.max(0,stage-1)][0]+10&&stage>0)stage--;
- if(hp<=0)setTimeout(()=>finish(false,true),1600);}
+ if(hp<=0&&!boomed){boomed=true;setTimeout(explode,900)}}
 function doomFx(){const t=1-hp/100;
  $('tHp').textContent=Math.round(hp)+'%';$('tHp').style.color=hp<30?'var(--bad)':hp<60?'var(--ac2)':'var(--good)';
  $('hpBar').style.width=hp+'%';$('hpBar').style.backgroundPosition=`${-(1-hp/100)*0}px 0`;
- $('vig').style.opacity=Math.max(0,t*1.3-.2);$('ash').style.opacity=t>.45?(t-.45)*1.6:0;
- const a=[56,225,255],b=[255,60,40];world.atmosphereColor(`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`).atmosphereAltitude(.22+t*.12);
+ const bt=Math.max(0,(60-hp)/60);$('vig').style.opacity=bt*1.1;$('ash').style.opacity=bt>.45?(bt-.45)*1.8:0;
+ const a=[56,225,255],b=[255,60,40];if(superOn)world.atmosphereColor('#7dffb0').atmosphereAltitude(.38);else world.atmosphereColor(`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*bt)).join(',')})`).atmosphereAltitude(.22+bt*.12);
  firePts=KEYS.flatMap(k=>Array.from({length:Math.round(dmg[k]*7)},(_,i)=>{const sd=(i*97+k.charCodeAt(0)*13)%100/100,sd2=(i*53+k.charCodeAt(1)*7)%100/100;return{lat:R[k].lat+(sd-.5)*24,lng:R[k].lng+(sd2-.5)*34,s:sd2,fire:1}}));
  setPts();paint();}
 let cityPts=[];
 function setPts(){world.pointsData([...firePts,...cityPts]).pointColor(d=>d.fire?(d.s>.5?'#ff5a1f':'#ffb547'):'#ffe066').pointAltitude(d=>d.fire?.03+d.s*.18:.02+d.s*.12).pointRadius(d=>d.fire?.55:.35).pointsTransitionDuration(800)}
 function burnColor(k,rgba){const d=Math.min(.85,dmg[k]/3);if(!d)return rgba;const m=rgba.match(/[\d.]+/g).map(Number);const tgt=[70,12,8];return `rgba(${m.slice(0,3).map((v,i)=>Math.round(v+(tgt[i]-v)*d)).join(',')},${m[3]??1})`}
+
+
+function checkSuper(){
+ if(!superOn&&hp>=100){superOn=true;document.body.classList.add('super');toast('SUPER PLANETA');news('<b>O mundo virou um SUPER PLANETA.</b> Saúde, educação e equilíbrio populacional em todos os continentes.','good','PLANETA');
+  KEYS.forEach(k=>dmg[k]=0);rings=KEYS.map(k=>({lat:R[k].lat,lng:R[k].lng,col:'rgba(125,255,176,A)',rad:30}));world.ringsData(rings);cap+=20;topbar()}
+ else if(superOn&&hp<88){superOn=false;document.body.classList.remove('super');rings=[];world.ringsData([]);news('O planeta perdeu o status de <b>super planeta</b>.','bad','PLANETA')}}
+function explode(){
+ world.controls().autoRotate=false;$('card').style.visibility='hidden';
+ let n=0;const iv=setInterval(()=>{document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake');if(++n>5)clearInterval(iv)},300);
+ world.atmosphereColor('#ff2a00').atmosphereAltitude(.6);
+ setTimeout(()=>{const w=$('whiteout');w.style.opacity=1;const g=$('globe');g.style.transform='scale(1.6)';g.style.opacity=0;
+  const cv=$('boom'),x=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;const cx=innerWidth/2,cy=innerHeight/2;
+  const P=Array.from({length:520},()=>{const a=Math.random()*6.283,v=2+Math.random()*14;return{x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:1+Math.random()*4,l:1,c:['#ffef9a','#ffb547','#ff5a1f','#ff2a00','#6b2a1a'][Math.random()*5|0]}});
+  let ring=0;setTimeout(()=>w.style.opacity=0,250);
+  (function f(){x.fillStyle='rgba(4,6,13,.25)';x.fillRect(0,0,cv.width,cv.height);ring+=14;
+   x.beginPath();x.arc(cx,cy,ring,0,6.283);x.strokeStyle=`rgba(255,180,80,${Math.max(0,1-ring/900)})`;x.lineWidth=6;x.stroke();
+   let alive=0;for(const p of P){if(p.l<=0)continue;alive++;p.x+=p.vx;p.y+=p.vy;p.vx*=.985;p.vy*=.985;p.l-=.006;x.globalAlpha=Math.max(0,p.l);x.fillStyle=p.c;x.beginPath();x.arc(p.x,p.y,p.r,0,6.283);x.fill()}x.globalAlpha=1;
+   if(alive)requestAnimationFrame(f)})();
+  toast('O PLANETA EXPLODIU');setTimeout(()=>finish(false,true),3800)},1900);
+}
 
 // ---------- MOEDAS ----------
 function addCoins(n,fromEl){if(!n)return;cap+=n;const box=$('cofre').getBoundingClientRect(),src=(fromEl||card).getBoundingClientRect();
@@ -588,7 +659,7 @@ const TUT=[
  ["#globe","O globo reage","Depois de cada decisão o continente pisca: verde = boa, vermelho = crise. Linhas mostram migrações e pontos de luz mostram cidades crescendo. Você pode girar e clicar nos continentes."],
  ["#left","O painel do Censo","Aqui ficam as taxas do continente selecionado. As setas mostram o que subiu ou desceu. Embaixo, a pirâmide etária muda conforme suas escolhas."],
  ["#legend","Mude o mapa","Escolha o que as cores do globo mostram: densidade, fecundidade, expectativa de vida, migração..."],
- ["#saude","Saúde do planeta","Cada decisão ruim destrói um pouco o mundo: aparecem incêndios, o céu fica vermelho e a tela treme. Decisões boas curam. Se chegar a 0%, o mundo acaba."],
+ ["#saude","Saúde do planeta","Começa em 60%. Decisões ruins destroem o mundo: incêndios, céu vermelho, tela tremendo. Se chegar a 0%, o planeta EXPLODE. Decisões boas curam — em 100% ele vira um SUPER PLANETA."],
  ["#tApr","Não perca o povo","Esta é a aprovação mundial. Se cair abaixo de 25%, você é deposto. Equilibre bons indicadores e moedas."],
  ["#bGloss","Glossário","Cada conceito que aparece no jogo é liberado aqui. Tente desbloquear os 25 até 2075. Boa sorte!"]];
 let ti=0;
@@ -610,7 +681,7 @@ function tut(){document.querySelectorAll('.tut-hi,.tut-up').forEach(e=>e.classLi
 }
 
 // ---------- INÍCIO ----------
-renderLeft();topbar();
+KEYS.forEach(k=>INIT[k]=snap(k));renderLeft();topbar();doomFx();
 news("Bem-vindo ao Conselho Mundial. Clique em um continente no globo para ver o Censo dele.","",'2025');
 $('bStart').onclick=()=>{$('intro').classList.add('hidden');toast("2025");setTimeout(()=>{startRound();setTimeout(()=>{ti=0;tut()},700)},900)};
 $('bHelp').onclick=()=>{ti=0;tut()};$('bTut').onclick=()=>$('bStart').click();
